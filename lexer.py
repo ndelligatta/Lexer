@@ -1,6 +1,7 @@
 from enum import Enum
-from gettext import translation
 import string
+from tkinter.ttk import Separator 
+
 class TokenType(Enum):
     KEYWORD = 0
     SEPARATOR = 1
@@ -26,6 +27,9 @@ class DFA():
         self.starting_state = starting_state
         self.finishing_states = finishing_states
         self.transition_table = transition_table
+    
+    def in_alphabet(self, char):
+        return char in self.alphabet
 
     def evaluate(self, input_string):
         input_symbols = list(input_string)
@@ -33,150 +37,170 @@ class DFA():
         for symbol in input_symbols:
             if current_state is None:
                 current_state = self.starting_state
+            else:
+                current_state = next_state
             next_state = self.transition_table[current_state][symbol]
+            print(f"{symbol} => {current_state} -> {next_state}")
         return next_state in self.finishing_states
 
 class Identifier_DFA(DFA):
-    alphabet = [x for x in string.ascii_letters] + [str(x) for x in range(1, 10)]
-    states = ["q0", "q1"]
+    alphabet = set([x for x in string.ascii_letters] + [str(x) for x in range(1, 10)])
+    states = ["q0", "q1", "q2"]
     starting_state = "q0"
     finishing_states = ["q1"]
     transition_table = {
         "q0": { },
-        "q1": { }
+        "q1": { },
+        "q2": { },
     }
+    
     for char in alphabet:
         if char.isnumeric():
-            transition_table["q0"][char] = "q0"
-            transition_table["q1"][char] = "q0"
+            transition_table["q0"][char] = "q2"
+            transition_table["q1"][char] = "q1"
+            transition_table["q2"][char] = "q2"
         else: 
             transition_table["q0"][char] = "q1"
             transition_table["q1"][char] = "q1"
-    def prt(self):
-        print(self.transition_table)
+            transition_table["q2"][char] = "q2"
     
     def __init__(self):
         super().__init__(self.alphabet, self.states, self.starting_state, self.finishing_states, self.transition_table)
 
-class Real_DFA(DFA):
-    alphabet = [str(x) for x in range(1, 10)]
-    states = ["q0"]
+class Real_DFA(DFA): 
+    alphabet = set([str(x) for x in range(0,10)] + ["."])
+    states = ["q0", "q1", "q2", "q3", "q4"]
     starting_state = "q0"
-    finishing_states = ["q0"]
+    finishing_states = ["q3"]
+    # Refactor for loop to automatically create
+    # transition table from the states 
     transition_table = {
-        "q0": { }
+        "q0": { },
+        "q1": { },
+        "q2": { },
+        "q3": { },
+        "q4": { }
     }
-    for char in alphabet:
-        transition_table["q0"][char] = "q0"
     
-    def prt(self):
-        print(self.transition_table)
-
+    for char in alphabet:
+        if char.isnumeric():
+            transition_table["q0"][char] = "q1"
+            transition_table["q1"][char] = "q1"
+            transition_table["q2"][char] = "q3"
+            transition_table["q3"][char] = "q3"
+            transition_table["q4"][char] = "q4"
+        elif char == ".":
+            transition_table["q0"][char] = "q4"
+            transition_table["q1"][char] = "q2"
+            transition_table["q2"][char] = "q4"
+            transition_table["q3"][char] = "q4"
+            transition_table["q4"][char] = "q4"
+    
     def __init__(self):
         super().__init__(self.alphabet, self.states, self.starting_state, self.finishing_states, self.transition_table)
-
-    
-class FileReader():
-    def __init__(self, path):
-        self.path = path
 
 class Lexer():
-    # "while (t < upper) s = 22.00;" 
-    keywords = ["while", "if"]
-    separators = ["(", ")", ";"]
-    identifiers = []
-    operators = ["<", ">", "="]
-    curr_index = 0
+    keywords = {"while", "if"}
+    separators = {"(", ")", ";"}
+    identifiers = set()
+    operators = {"<", ">", "="}
+    
     def __init__(self, source_string):
         self.source_string = source_string
-
+        self.stream = self.source_string.split()
+        self.curr_index = 0
     
-    def is_keyword(self, stream):
-        return self.get_keyword(stream)
-
-    def get_keyword(self, stream):
-        for index, keyword in enumerate(self.keywords):
-            # Make the if also capable of checking for separators in addition to spaces
-            if stream.startswith(keyword) and stream[len(keyword):][0] == " ":
-               return (len(keyword), keyword)
-            else:
-                return None 
-
-
-    # Return token
     def lexer(self):
-        stream = self.source_string[self.curr_index:]
+        print(self.stream)
+        if len(self.stream) > 0:
+            block = str(self.stream[0])
+            token_length, token = self.parse(block)
+            if(len(block) > token_length):
+                print("I hit this")
+                self.stream[0] = self.stream[0][token_length:]
+                print(self.stream)
+                return token
+            elif(len(block) == token_length):
+                del self.stream[0]
+                print(self.stream)
+                return token
+
+    def parse(self, block):
+        operator = next((operator for operator in self.operators if block.startswith(operator)), None)
+        separator = next((separator for separator in self.separators if block.startswith(separator)), None)
+        keyword = next((keyword for keyword in self.keywords if block.startswith(keyword)), None)      
+        
+        results = [(TokenType.OPERATOR, operator), (TokenType.SEPARATOR, separator), (TokenType.KEYWORD, keyword)]
+        
+        for result in results:
+            if result[1] is not None:
+                token_length = len(result[1])
+                return (token_length, Token(result[0], result[1]))
+        
         id_DFA = Identifier_DFA()
         real_DFA = Real_DFA()
-        # for char in stream:
-        # while self.curr_index < len(stream):
-        #     print(stream)
-        #     if stream[index].isspace():
-        #         index += 1
-        #         stream = stream[index:]
-        #         continue
-        #     elif stream[index] in self.operators: # Fix == operator 
-        #         self.curr_index += index + 1
-        #         return Token(TokenType.OPERATOR, stream[index])
-        #     elif stream[index] in self.separators:
-        #         self.curr_index += index + 1
-        #         return Token(TokenType.SEPARATOR, stream[index])
-        #     elif self.is_keyword(stream) is not None:
-        #         (keyword_length, keyword) = self.get_keyword(stream)
-        #         self.curr_index += keyword_length
-        #         return Token(TokenType.KEYWORD, keyword)
-        #     elif stream[index] in real_DFA.alphabet:
-        #         if stream[index + 1] in real_DFA.alphabet:
-        #             index += 1
-        #             continue 
-        #         else:
-        #             if real_DFA.evaluate(stream[:index + 1]):
-        #                 self.curr_index += index + 1
-        #                 return Token(TokenType.REAL, stream[:index + 1])
-        #     index += 1
-
-            # if stream[index].isspace():
-            #     stream = stream[index:]
-            #     index += 1
-            #     continue
-        index = self.curr_index
-        if stream[index] in self.operators:
-            self.curr_index += 1
-            return Token(TokenType.OPERATOR, stream[index])
-        elif stream[index] in self.separators:
-            self.curr_index += index + 1
-            return Token(TokenType.SEPARATOR, stream[index])
-        elif self.is_keyword(stream) is not None:
-                (keyword_length, keyword) = self.get_keyword(stream)
-                self.curr_index += keyword_length 
-                return Token(TokenType.KEYWORD, keyword)
+        flag = True
+        id_flag = True 
+        real_flag = True
+        alphabet = set()
+        
+        for i, char in enumerate(block):
+            if char not in Identifier_DFA.alphabet:
+                print(f"Char {char}?  {char not in Identifier_DFA.alphabet}")
+                id_flag = False
+            if char not in Real_DFA.alphabet:
+                real_flag = False
+            if char in self.operators or char in self.keywords or char in self.separators:
+                token_length = i
+                flag = False
+                break
+            else:
+                alphabet.add(char)
+        
+        if flag:
+            token_length = len(block)
+        current_string = block[:token_length]
+        print(f"Current string = {current_string}")
+        print(f"id flag == {id_flag}")
+        print(f"Token length is {token_length}")
+        print(f"block[:token_length] = {block[:token_length]}")
+        if id_flag:
+            # for i, char in enumerate(block):
+            if id_DFA.evaluate(block[:token_length]):
+                return (token_length, Token(TokenType.IDENTIFIER, current_string))
+        else:
+            id_flag = True
+            for i, char in enumerate(block[:token_length]):
+                if char not in Identifier_DFA.alphabet:
+                    id_flag = False
+            if id_flag:
+                if id_DFA.evaluate(block[:token_length]):
+                    return (token_length, Token(TokenType.IDENTIFIER, current_string))
+        if real_flag:
+            if real_DFA.evaluate(block[:token_length]):
+                return (token_length, Token(TokenType.REAL, current_string))
+        else:
+            real_flag = True
+            for i, char in enumerate(block[:token_length]):
+                if char not in Real_DFA.alphabet:
+                    real_flag = False
+            if real_flag:
+                if real_DFA.evaluate(block[:token_length]):
+                    return (token_length, Token(TokenType.REAL, current_string))
+        return (0, Token(None, current_string))
 
 
 def main():
-    # myToken = Token(TokenType.IDENTIFIER, "myVar")
-    alphabet = ["0", "1"]
-    states = ["q0", "q1"]
-    starting_state = "q0"
-    finishing_states = ["q1"]
-    transition_table = { 
-        "q0": {"0": "q0", "1": "q1"},
-        "q1": {"0": "q0", "1": "q1"} 
-    }
+    source = "if (x > 7.0) y = 12.0;"
+    lexer = Lexer(source)
 
-    ends_with_one = DFA(alphabet, states, starting_state, finishing_states, transition_table)
-    input = "0101010101"
-    val = ends_with_one.evaluate(input)
-    print(f"Ends with 1: {input} = {val}")
-    print(ends_with_one.evaluate("0101010101"))
-
-    lexer = Lexer("while (x == 55) y = 2;")
-    print(lexer.lexer())
-    print(lexer.lexer())
-    print(lexer.lexer())
-    print(lexer.lexer())
-    print(lexer.lexer())
-    print(lexer.lexer())
-    print(lexer.lexer())
+    tokens = []
+    for i in range(1, 11):
+        tokens.append(lexer.lexer())
+    x = 0
+    while x < len(tokens):
+        print(tokens[x])
+        x += 1
 
 if __name__ == "__main__":
     main()
