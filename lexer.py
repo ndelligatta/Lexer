@@ -108,33 +108,49 @@ class Lexer():
         stream = self.source_string[self.curr_index:]
         id_DFA = Identifier_DFA()
         real_DFA = Real_DFA()
-        index = 0
-        for char in stream:
-        #while index < len(stream)
-            print(stream)
-            if char.isspace():
-                index += 1
-                stream = stream[index:]
-                continue
-            elif char in self.operators: # Fix == operator 
-                self.curr_index += index + 1
-                return Token(TokenType.OPERATOR, char)
-            elif char in self.separators:
-                self.curr_index += index + 1
-                return Token(TokenType.SEPARATOR, char)
-            elif self.is_keyword(stream) is not None:
+        # for char in stream:
+        # while self.curr_index < len(stream):
+        #     print(stream)
+        #     if stream[index].isspace():
+        #         index += 1
+        #         stream = stream[index:]
+        #         continue
+        #     elif stream[index] in self.operators: # Fix == operator 
+        #         self.curr_index += index + 1
+        #         return Token(TokenType.OPERATOR, stream[index])
+        #     elif stream[index] in self.separators:
+        #         self.curr_index += index + 1
+        #         return Token(TokenType.SEPARATOR, stream[index])
+        #     elif self.is_keyword(stream) is not None:
+        #         (keyword_length, keyword) = self.get_keyword(stream)
+        #         self.curr_index += keyword_length
+        #         return Token(TokenType.KEYWORD, keyword)
+        #     elif stream[index] in real_DFA.alphabet:
+        #         if stream[index + 1] in real_DFA.alphabet:
+        #             index += 1
+        #             continue 
+        #         else:
+        #             if real_DFA.evaluate(stream[:index + 1]):
+        #                 self.curr_index += index + 1
+        #                 return Token(TokenType.REAL, stream[:index + 1])
+        #     index += 1
+
+            # if stream[index].isspace():
+            #     stream = stream[index:]
+            #     index += 1
+            #     continue
+        index = self.curr_index
+        if stream[index] in self.operators:
+            self.curr_index += 1
+            return Token(TokenType.OPERATOR, stream[index])
+        elif stream[index] in self.separators:
+            self.curr_index += index + 1
+            return Token(TokenType.SEPARATOR, stream[index])
+        elif self.is_keyword(stream) is not None:
                 (keyword_length, keyword) = self.get_keyword(stream)
-                self.curr_index += keyword_length
+                self.curr_index += keyword_length 
                 return Token(TokenType.KEYWORD, keyword)
-            elif char in real_DFA.alphabet:
-                if stream[index + 1] in real_DFA.alphabet:
-                    index += 1
-                    continue 
-                else:
-                    if real_DFA.evaluate(stream[:index + 1]):
-                        self.curr_index += index + 1
-                        return Token(TokenType.REAL, stream[:index + 1])
-            index += 1
+
 
 def main():
     # myToken = Token(TokenType.IDENTIFIER, "myVar")
