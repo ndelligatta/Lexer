@@ -1,6 +1,5 @@
 from enum import Enum
 import string
-from tkinter.ttk import Separator 
 
 class TokenType(Enum):
     KEYWORD = 0
@@ -40,7 +39,7 @@ class DFA():
             else:
                 current_state = next_state
             next_state = self.transition_table[current_state][symbol]
-            print(f"{symbol} => {current_state} -> {next_state}")
+            #print(f"{symbol} => {current_state} -> {next_state}")
         return next_state in self.finishing_states
 
 class Identifier_DFA(DFA):
@@ -99,6 +98,14 @@ class Real_DFA(DFA):
     def __init__(self):
         super().__init__(self.alphabet, self.states, self.starting_state, self.finishing_states, self.transition_table)
 
+class FileIO():
+    def read_file(file_name):
+        with open(file_name, 'r') as file:
+            data = file.read().replace('\n', '')
+        return data
+    
+
+
 class Lexer():
     keywords = {"while", "if"}
     separators = {"(", ")", ";"}
@@ -111,18 +118,17 @@ class Lexer():
         self.curr_index = 0
     
     def lexer(self):
-        print(self.stream)
+        #print(self.stream)
         if len(self.stream) > 0:
             block = str(self.stream[0])
             token_length, token = self.parse(block)
             if(len(block) > token_length):
-                print("I hit this")
                 self.stream[0] = self.stream[0][token_length:]
-                print(self.stream)
+                #print(self.stream)
                 return token
             elif(len(block) == token_length):
                 del self.stream[0]
-                print(self.stream)
+                #print(self.stream)
                 return token
 
     def parse(self, block):
@@ -146,7 +152,6 @@ class Lexer():
         
         for i, char in enumerate(block):
             if char not in Identifier_DFA.alphabet:
-                print(f"Char {char}?  {char not in Identifier_DFA.alphabet}")
                 id_flag = False
             if char not in Real_DFA.alphabet:
                 real_flag = False
@@ -160,10 +165,6 @@ class Lexer():
         if flag:
             token_length = len(block)
         current_string = block[:token_length]
-        print(f"Current string = {current_string}")
-        print(f"id flag == {id_flag}")
-        print(f"Token length is {token_length}")
-        print(f"block[:token_length] = {block[:token_length]}")
         if id_flag:
             # for i, char in enumerate(block):
             if id_DFA.evaluate(block[:token_length]):
@@ -191,7 +192,7 @@ class Lexer():
 
 
 def main():
-    source = "if (x > 7.0) y = 12.0;"
+    source = FileIO.read_file("input_scode.txt")
     lexer = Lexer(source)
 
     tokens = []
